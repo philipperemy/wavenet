@@ -1,4 +1,7 @@
+import collections
 import json
+
+import numpy as np
 
 from data_reader import next_batch
 from file_logger import FileLogger
@@ -21,6 +24,7 @@ def main():
 
     net = WaveNet(wavenet_params['dilations'], SEQUENCE_LENGTH)
     loss = net.loss(batch_x, batch_y)
+    pred = by_name('loss/prediction')
     optimizer = create_adam_optimizer(LEARNING_RATE, MOMENTUM)
     trainable = tf.trainable_variables()
     grad_update = optimizer.minimize(loss, var_list=trainable)
@@ -31,16 +35,16 @@ def main():
     sess.run(init)
 
     print('Total # of parameters to train: {}'.format(count_trainable_parameters()))
-
     file_logger = FileLogger('hello.txt', ['step', 'training_loss'])
-
-    mean_loss = 0.0
+    d = collections.deque(maxlen=10)
     for step in range(1, int(1e9)):
         x, y = next_batch()
-        loss_value, _ = sess.run([loss, grad_update],
-                                 feed_dict={batch_x: x,
-                                            batch_y: y})
-        mean_loss = (mean_loss * step + loss_value) / (step + 1)
+        loss_value, _, pred_value = sess.run([loss, grad_update, pred],
+                                             feed_dict={batch_x: x,
+                                                        batch_y: y})
+        print('y = {}, p = {}'.format(y.flatten(), pred_value))
+        d.append(loss_value)
+        mean_loss = np.mean(d)
         file_logger.write([step, mean_loss])
         print('loss = {:.6f}'.format(mean_loss))
     file_logger.close()

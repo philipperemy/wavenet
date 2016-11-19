@@ -16,7 +16,9 @@ class WaveNet(object):
     def loss(self, input_batch, y, name='loss'):
         with tf.name_scope(name):
             input_batch = tf.reshape(tf.cast(input_batch, tf.float32), [self.batch_size, -1, 1])
-            out = tf.identity(self._create_network(input_batch), name='prediction')
+            out = self._create_network(input_batch)
+            out = tf.slice(tf.reshape(out, [-1]), begin=[tf.shape(out)[1] - 1], size=[1])
+            out = tf.identity(out, name='prediction')
             reduced_loss = tf.reduce_sum(tf.square(tf.sub(out, y)))
             return reduced_loss
 
