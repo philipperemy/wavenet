@@ -1,3 +1,7 @@
-# wavenet
+# Lightweight WaveNet in TensorFlow
 
 Work in progress! Please star it in the mean time. Coming soon :)
+
+The aim of this project is to provide a lightweight WaveNet implementation in Tensorflow. When I say lightweight, it means without the WAV support (no processing such as mu-law encoder and no generation). In fact, the WaveNet architecture can be applied to any kind of Time Series.
+
+- First draft pushed (Nov, 19th)
