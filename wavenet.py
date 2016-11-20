@@ -17,7 +17,8 @@ class WaveNet(object):
         with tf.name_scope(name):
             input_batch = tf.reshape(tf.cast(input_batch, tf.float32), [self.batch_size, -1, 1])
             out = self._create_network(input_batch)
-            out = tf.slice(tf.reshape(out, [-1]), begin=[tf.shape(out)[1] - 1], size=[1])
+            # take the last value. similar to a RNN architecture. Output.shape = (1, 1)
+            out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[tf.shape(out)[1] - 1], size=[1]), [-1, 1])
             out = tf.identity(out, name='prediction')
             reduced_loss = tf.reduce_sum(tf.square(tf.sub(out, y)))
             return reduced_loss
@@ -27,7 +28,7 @@ class WaveNet(object):
         out_layer = self._create_causal_layer(input_batch)
         with tf.name_scope('dilated_stack'):
             for layer_index, dilation in enumerate(self.dilations):
-                with tf.name_scope('layer{}'.format(layer_index)):
+                with tf.name_scope('layer_{}'.format(layer_index)):
                     skip, out_layer = self._create_dilated_layer(out_layer, layer_index, dilation)
                     skip_connections.append(skip)
         with tf.name_scope('post_processing'):
