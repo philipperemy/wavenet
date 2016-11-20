@@ -46,11 +46,11 @@ def _revert_from_dilated_sequences(value, dilation):
 
 def dilated_convolution(value, filter_, dilation, name='dilated_conv'):
     with tf.name_scope(name):
-        dilated_sequences = _to_dilated_sequences(value, dilation)
+        padded = tf.pad(value, [[0, 0], [dilation, 0], [0, 0]])
+        dilated_sequences = _to_dilated_sequences(padded, dilation)
         conv_sequences = tf.nn.conv1d(dilated_sequences, filter_, stride=1, padding='VALID')  # we use batch here.
         conv = _revert_from_dilated_sequences(conv_sequences, dilation)
-        pad_conv = tf.pad(conv, [[0, 0], [dilation, 0], [0, 0]])
-        return pad_conv
+        return conv
 
 
 def causal_convolution(value, filter_, name='causal_convolution'):

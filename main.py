@@ -7,7 +7,7 @@ from data_reader import next_batch
 from helpers import FileLogger
 from wavenet import *
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-5
 WAVENET_PARAMS = 'wavenet_params.json'
 MOMENTUM = 0.9
 SEQUENCE_LENGTH = 32
@@ -33,17 +33,21 @@ def main():
     sess.run(init)
 
     print('Total # of parameters to train: {}'.format(count_trainable_parameters()))
-    file_logger = FileLogger('log.tsv', ['step', 'training_loss'])
+    file_logger = FileLogger('log.tsv', ['step', 'training_loss', 'benchmark_loss'])
     d = collections.deque(maxlen=10)
+    benchmark_d = collections.deque(maxlen=10)
     for step in range(1, int(1e9)):
         x, y = next_batch()
         loss_value, _, pred_value = sess.run([loss, grad_update, pred],
                                              feed_dict={x_placeholder: x,
                                                         y_placeholder: y})
+        # The mean converges to 0.5 for IID U(0,1) random variables. Good benchmark.
+        benchmark_d.append(sum((0.5 - y) ** 2))
         d.append(loss_value)
         mean_loss = np.mean(d)
-        file_logger.write([step, mean_loss])
-        print('y = {}, p = {}, mean_loss_over_last_ten_values = {}'.format(y, pred_value, mean_loss))
+        benchmark_mean_loss = np.mean(benchmark_d)
+        file_logger.write([step, mean_loss, benchmark_mean_loss])
+        print('y = {}, p = {}, mean_loss = {}, bench_loss = {}'.format(y, pred_value, mean_loss, benchmark_mean_loss))
     file_logger.close()
 
 

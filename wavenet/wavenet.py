@@ -8,7 +8,7 @@ class WaveNet(object):
         self.residual_channels = 16  # Not specified in the paper.
         self.dilation_channels = 32  # Not specified in the paper.
         self.skip_channels = 16  # Not specified in the paper.
-        self.filter_width = 2  # Convolutions just use 2 samples.
+        self.filter_width = 2  # Convolutions just use 2 samples. This parameter should not be changed.
         self.initial_channels = 1
         self.variables = self._create_variables()
         self.batch_size = 1
@@ -75,13 +75,11 @@ class WaveNet(object):
 
     def _create_variables(self):
         var = dict()
-
         with tf.variable_scope('wavenet'):
             with tf.variable_scope('causal_layer'):
                 layer = dict()
-                initial_filter_width = self.sequence_length
-                layer['filter'] = create_convolution_variable('filter', [initial_filter_width,
-                                                                         self.initial_channels,
+                layer['filter'] = create_convolution_variable('filter', [self.filter_width,
+                                                                         1,  # in_channels = 1
                                                                          self.residual_channels])
                 var['causal_layer'] = layer
 
@@ -96,20 +94,21 @@ class WaveNet(object):
                         current['gate'] = create_convolution_variable('gate', [self.filter_width,
                                                                                self.residual_channels,
                                                                                self.dilation_channels])
+                        # 1 x 1 => will be the output of the layer.
                         current['dense'] = create_convolution_variable('dense', [1,
                                                                                  self.dilation_channels,
                                                                                  self.residual_channels])
-                        current['skip'] = create_convolution_variable('skip',
-                                                                      [1,
-                                                                       self.dilation_channels,
-                                                                       self.skip_channels])
+                        # 1 x 1 => will be sent to the skip output.
+                        current['skip'] = create_convolution_variable('skip', [1,
+                                                                               self.dilation_channels,
+                                                                               self.skip_channels])
                         var['dilated_stack'].append(current)
 
             with tf.variable_scope('skip'):
                 skip = dict()
-                skip['skip_1'] = create_convolution_variable('skip_1',
-                                                             [1, self.skip_channels, self.skip_channels])
-                skip['skip_2'] = create_convolution_variable('skip_2',
-                                                             [1, self.skip_channels, self.initial_channels])
+                # 1 x 1
+                skip['skip_1'] = create_convolution_variable('skip_1', [1, self.skip_channels, self.skip_channels])
+                # 1 x 1
+                skip['skip_2'] = create_convolution_variable('skip_2', [1, self.skip_channels, 1])  # in_channels = 1
                 var['skip'] = skip
         return var
