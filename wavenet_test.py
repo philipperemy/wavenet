@@ -1,8 +1,7 @@
 import numpy as np
 
-from ml_utils import *
-from ml_utils import _to_dilated_sequences
-from wavenet import WaveNet
+from wavenet import *
+from wavenet.ml_utils import _to_dilated_sequences
 
 np.set_printoptions(threshold=np.nan)
 

@@ -4,9 +4,8 @@ import json
 import numpy as np
 
 from data_reader import next_batch
-from file_logger import FileLogger
-from ml_utils import *
-from wavenet import WaveNet
+from helpers import FileLogger
+from wavenet import *
 
 LEARNING_RATE = 1e-3
 WAVENET_PARAMS = 'wavenet_params.json'
@@ -29,13 +28,12 @@ def main():
     trainable = tf.trainable_variables()
     grad_update = optimizer.minimize(loss, var_list=trainable)
 
-    # Set up session
     sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
     init = tf.initialize_all_variables()
     sess.run(init)
 
     print('Total # of parameters to train: {}'.format(count_trainable_parameters()))
-    file_logger = FileLogger('hello.txt', ['step', 'training_loss'])
+    file_logger = FileLogger('log.tsv', ['step', 'training_loss'])
     d = collections.deque(maxlen=10)
     for step in range(1, int(1e9)):
         x, y = next_batch()
@@ -45,7 +43,7 @@ def main():
         d.append(loss_value)
         mean_loss = np.mean(d)
         file_logger.write([step, mean_loss])
-        print('y = {}, p = {}, mean_loss_over_last_ten_values = {}'.format(y.flatten(), pred_value, mean_loss))
+        print('y = {}, p = {}, mean_loss_over_last_ten_values = {}'.format(y, pred_value, mean_loss))
     file_logger.close()
 
 

@@ -1,4 +1,4 @@
-from ml_utils import *
+from wavenet.ml_utils import *
 
 
 class WaveNet(object):
