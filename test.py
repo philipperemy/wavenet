@@ -2,6 +2,7 @@ import numpy as np
 
 from ml_utils import *
 from ml_utils import _to_dilated_sequences
+from wavenet import WaveNet
 
 np.set_printoptions(threshold=np.nan)
 
@@ -10,6 +11,38 @@ batch_size = 1
 
 
 class MyTest(tf.test.TestCase):
+    def test_loss_2(self):
+        with self.test_session() as sess:
+            sequence_length = 4
+            batch_x = tf.placeholder('float32', [sequence_length, 1])
+            batch_y = tf.placeholder('float32', [1, 1])
+            net = WaveNet([1, 2], sequence_length, batch_x, batch_y)
+            loss = net.get_loss()
+            p = by_name('loss/prediction')
+
+            init = tf.initialize_all_variables()
+            sess.run(init)
+
+            loss_value_1, p1 = sess.run([loss, p], feed_dict={batch_x: np.array([[0], [1], [2], [3]]),
+                                                              batch_y: np.array([[1]])})
+
+            loss_value_2, p2 = sess.run([loss, p], feed_dict={batch_x: np.array([[0], [1], [2], [3]]),
+                                                              batch_y: np.array([[0]])})
+
+            assert loss_value_1 != loss_value_2
+            assert p1 == p2
+
+    def test_loss(self):
+        with self.test_session() as sess:
+            sequence_length = 4
+            batch_x = tf.identity(np.array([[0], [1], [2], [3]], dtype='float32'))
+            batch_y = tf.identity(np.array([[1]], dtype='float32'))
+            net = WaveNet([1, 2], sequence_length, batch_x, batch_y)
+            init = tf.initialize_all_variables()
+            sess.run(init)
+            p = by_name('loss/prediction')
+            assert np.square(p.eval() - batch_y.eval()).flatten()[0] == net.get_loss().eval()
+
     def test_dilated_convolution(self):
         with self.test_session():
             tf.set_random_seed(1)

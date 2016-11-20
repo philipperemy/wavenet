@@ -22,8 +22,8 @@ def main():
         batch_x = tf.placeholder('float32', [SEQUENCE_LENGTH, 1])
         batch_y = tf.placeholder('float32', [1, 1])
 
-    net = WaveNet(wavenet_params['dilations'], SEQUENCE_LENGTH)
-    loss = net.loss(batch_x, batch_y)
+    net = WaveNet(wavenet_params['dilations'], SEQUENCE_LENGTH, batch_x, batch_y)
+    loss = net.get_loss()
     pred = by_name('loss/prediction')
     optimizer = create_adam_optimizer(LEARNING_RATE, MOMENTUM)
     trainable = tf.trainable_variables()
@@ -42,11 +42,10 @@ def main():
         loss_value, _, pred_value = sess.run([loss, grad_update, pred],
                                              feed_dict={batch_x: x,
                                                         batch_y: y})
-        print('y = {}, p = {}'.format(y.flatten(), pred_value))
         d.append(loss_value)
         mean_loss = np.mean(d)
         file_logger.write([step, mean_loss])
-        print('loss = {:.6f}'.format(mean_loss))
+        print('y = {}, p = {}, mean_loss_over_last_ten_values = {}'.format(y.flatten(), pred_value, mean_loss))
     file_logger.close()
 
 

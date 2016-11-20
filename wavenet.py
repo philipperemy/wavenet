@@ -2,7 +2,7 @@ from ml_utils import *
 
 
 class WaveNet(object):
-    def __init__(self, dilations, sequence_length):
+    def __init__(self, dilations, sequence_length, x_placeholder, y_placeholder):
         self.dilations = dilations
         self.sequence_length = sequence_length
         self.residual_channels = 16  # Not specified in the paper.
@@ -12,11 +12,15 @@ class WaveNet(object):
         self.initial_channels = 1
         self.variables = self._create_variables()
         self.batch_size = 1
+        self.loss_func = self.loss(x_placeholder, y_placeholder)
 
-    def loss(self, input_batch, y, name='loss'):
+    def get_loss(self):
+        return self.loss_func
+
+    def loss(self, x, y, name='loss'):
         with tf.name_scope(name):
-            input_batch = tf.reshape(tf.cast(input_batch, tf.float32), [self.batch_size, -1, 1])
-            out = self._create_network(input_batch)
+            x = tf.reshape(tf.cast(x, tf.float32), [self.batch_size, -1, 1])
+            out = self._create_network(x)
             # take the last value. similar to a RNN architecture. Output.shape = (1, 1)
             out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[tf.shape(out)[1] - 1], size=[1]), [-1, 1])
             out = tf.identity(out, name='prediction')
