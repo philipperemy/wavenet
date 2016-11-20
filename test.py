@@ -6,19 +6,16 @@ from wavenet import WaveNet
 
 np.set_printoptions(threshold=np.nan)
 
-quantization_channels = 16
-batch_size = 1
 
-
-class MyTest(tf.test.TestCase):
+class WaveNetTests(tf.test.TestCase):
     def test_loss_2(self):
         with self.test_session() as sess:
             sequence_length = 4
             batch_x = tf.placeholder('float32', [sequence_length, 1])
             batch_y = tf.placeholder('float32', [1, 1])
             net = WaveNet([1, 2], sequence_length, batch_x, batch_y)
-            loss = net.get_loss()
-            p = by_name('loss/prediction')
+            loss = net.loss()
+            p = net.pred()
 
             init = tf.initialize_all_variables()
             sess.run(init)
@@ -40,8 +37,8 @@ class MyTest(tf.test.TestCase):
             net = WaveNet([1, 2], sequence_length, batch_x, batch_y)
             init = tf.initialize_all_variables()
             sess.run(init)
-            p = by_name('loss/prediction')
-            assert np.square(p.eval() - batch_y.eval()).flatten()[0] == net.get_loss().eval()
+            p = net.pred()
+            assert np.square(p.eval() - batch_y.eval()).flatten()[0] == net.loss().eval()
 
     def test_dilated_convolution(self):
         with self.test_session():

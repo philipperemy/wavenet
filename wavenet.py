@@ -12,24 +12,30 @@ class WaveNet(object):
         self.initial_channels = 1
         self.variables = self._create_variables()
         self.batch_size = 1
-        self.loss_func = self.loss(x_placeholder, y_placeholder)
+        self.predict_func = self._init_predict_tensor(x_placeholder)
+        self.loss_func = self._init_loss_tensor(y_placeholder)
 
-    def get_loss(self):
+    def pred(self):
+        return self.predict_func
+
+    def loss(self):
         return self.loss_func
 
-    def loss(self, x, y, name='loss'):
+    def _init_predict_tensor(self, x):
+        x = tf.reshape(tf.cast(x, tf.float32), [self.batch_size, -1, 1])
+        out = self._create_network(x)
+        out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[tf.shape(out)[1] - 1], size=[1]), [-1, 1])
+        return tf.identity(out, name='prediction')
+
+    def _init_loss_tensor(self, y, name='loss'):
         with tf.name_scope(name):
-            x = tf.reshape(tf.cast(x, tf.float32), [self.batch_size, -1, 1])
-            out = self._create_network(x)
-            # take the last value. similar to a RNN architecture. Output.shape = (1, 1)
-            out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[tf.shape(out)[1] - 1], size=[1]), [-1, 1])
-            out = tf.identity(out, name='prediction')
+            out = self.pred()
             reduced_loss = tf.reduce_sum(tf.square(tf.sub(out, y)))
             return reduced_loss
 
-    def _create_network(self, input_batch):
+    def _create_network(self, inputs):
         skip_connections = []
-        out_layer = self._create_causal_layer(input_batch)
+        out_layer = self._create_causal_layer(inputs)
         with tf.name_scope('dilated_stack'):
             for layer_index, dilation in enumerate(self.dilations):
                 with tf.name_scope('layer_{}'.format(layer_index)):
@@ -45,18 +51,18 @@ class WaveNet(object):
             skips = tf.nn.conv1d(skips, w_skip_dense_2, stride=1, padding='VALID')
         return skips
 
-    def _create_causal_layer(self, input_batch):
+    def _create_causal_layer(self, inputs):
         with tf.name_scope('causal_layer'):
             weights_filter = self.variables['causal_layer']['filter']
-            return causal_convolution(input_batch, weights_filter)
+            return causal_convolution(inputs, weights_filter)
 
-    def _create_dilated_layer(self, input_batch, layer_index, dilation):
+    def _create_dilated_layer(self, inputs, layer_index, dilation):
         with tf.name_scope('dilated_layer'):
             variables = self.variables['dilated_stack'][layer_index]
             w_f = variables['filter']
             w_g = variables['gate']
-            conv_f = tf.tanh(dilated_convolution(input_batch, w_f, dilation))
-            conv_g = tf.sigmoid(dilated_convolution(input_batch, w_g, dilation))
+            conv_f = tf.tanh(dilated_convolution(inputs, w_f, dilation))
+            conv_g = tf.sigmoid(dilated_convolution(inputs, w_g, dilation))
             z = tf.mul(conv_f, conv_g)
 
             w_o = variables['dense']
@@ -65,7 +71,7 @@ class WaveNet(object):
             w_s = variables['skip']
             conv_s = tf.nn.conv1d(z, w_s, stride=1, padding='VALID')
 
-            return conv_s, input_batch + conv_o
+            return conv_s, inputs + conv_o
 
     def _create_variables(self):
         var = dict()
@@ -106,5 +112,4 @@ class WaveNet(object):
                 skip['skip_2'] = create_convolution_variable('skip_2',
                                                              [1, self.skip_channels, self.initial_channels])
                 var['skip'] = skip
-
         return var
