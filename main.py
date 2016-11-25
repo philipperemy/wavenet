@@ -3,6 +3,7 @@ import json
 
 import numpy as np
 
+from constants import *
 from data_reader import next_batch
 from helpers import FileLogger
 from wavenet import *
@@ -10,7 +11,6 @@ from wavenet import *
 LEARNING_RATE = 1e-5
 WAVENET_PARAMS = 'wavenet_params.json'
 MOMENTUM = 0.9
-SEQUENCE_LENGTH = 32
 
 
 def main():
@@ -18,8 +18,8 @@ def main():
         wavenet_params = json.load(f)
 
     with tf.name_scope('create_inputs'):
-        x_placeholder = tf.placeholder('float32', [SEQUENCE_LENGTH, 1])
-        y_placeholder = tf.placeholder('float32', [1, 1])
+        x_placeholder = tf.placeholder('float32', [FULL_SEQUENCE_LENGTH, 1])
+        y_placeholder = tf.placeholder('float32', [FULL_SEQUENCE_LENGTH - SEQUENCE_LENGTH, 1])
 
     net = WaveNet(wavenet_params['dilations'], SEQUENCE_LENGTH, x_placeholder, y_placeholder)
     loss = net.loss()
@@ -42,12 +42,12 @@ def main():
                                              feed_dict={x_placeholder: x,
                                                         y_placeholder: y})
         # The mean converges to 0.5 for IID U(0,1) random variables. Good benchmark.
-        benchmark_d.append(sum((0.5 - y) ** 2))
+        benchmark_d.append(np.mean(np.square(0.5 - y)))
         d.append(loss_value)
         mean_loss = np.mean(d)
         benchmark_mean_loss = np.mean(benchmark_d)
         file_logger.write([step, mean_loss, benchmark_mean_loss])
-        print('y = {}, p = {}, mean_loss = {}, bench_loss = {}'.format(y, pred_value, mean_loss, benchmark_mean_loss))
+        # print('y = {}, p = {}, mean_loss = {}, bench_loss = {}'.format(y, pred_value, mean_loss, benchmark_mean_loss))
     file_logger.close()
 
 
