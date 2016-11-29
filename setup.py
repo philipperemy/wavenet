@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='lightweight-wavenet',
-    version='1.0.0',
+    name='wavenet',
+    version='2.0.0',
     description='Lightweight WaveNet Framework',
     author='Philippe Remy',
     license='MIT',

@@ -24,12 +24,13 @@ class WaveNet(object):
     def _init_predict_tensor(self, x):
         x = tf.reshape(tf.cast(x, tf.float32), [self.batch_size, -1, 1])
         out = self._create_network(x)
-        out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[self.sequence_length], size=[-1]), [-1, 1])
         return tf.identity(out, name='prediction')
 
     def _init_loss_tensor(self, y, name='loss'):
         with tf.name_scope(name):
             out = self.pred()
+            slice_size = tf.shape(out)[1] - self.sequence_length
+            out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[0], size=[slice_size]), [-1, 1])
             reduced_loss = tf.reduce_mean(tf.square(tf.sub(out, y)))
             return reduced_loss
 

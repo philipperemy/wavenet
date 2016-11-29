@@ -2,13 +2,13 @@ import collections
 import json
 
 import numpy as np
-
+from pprint import pprint
 from constants import *
 from data_reader import next_batch
 from helpers import FileLogger
 from wavenet import *
 
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 1e-4
 WAVENET_PARAMS = 'wavenet_params.json'
 MOMENTUM = 0.9
 
@@ -16,6 +16,7 @@ MOMENTUM = 0.9
 def main():
     with open(WAVENET_PARAMS, 'r') as f:
         wavenet_params = json.load(f)
+    pprint(wavenet_params)
 
     with tf.name_scope('create_inputs'):
         x_placeholder = tf.placeholder('float32', [FULL_SEQUENCE_LENGTH, 1])
