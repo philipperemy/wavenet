@@ -22,7 +22,8 @@ def main():
         x_placeholder = tf.placeholder('float32', [FULL_SEQUENCE_LENGTH, 1])
         y_placeholder = tf.placeholder('float32', [FULL_SEQUENCE_LENGTH - SEQUENCE_LENGTH, 1])
 
-    net = WaveNet(wavenet_params['dilations'], SEQUENCE_LENGTH, x_placeholder, y_placeholder)
+    net = WaveNet(wavenet_params['dilations'], SEQUENCE_LENGTH, x_placeholder, y_placeholder, use_biases=True,
+                  use_mean_loss=True)
     loss = net.loss()
     pred = net.pred()
     optimizer = create_adam_optimizer(LEARNING_RATE, MOMENTUM)

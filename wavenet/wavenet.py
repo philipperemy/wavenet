@@ -2,7 +2,7 @@ from wavenet.ml_utils import *
 
 
 class WaveNet(object):
-    def __init__(self, dilations, sequence_length, x_placeholder, y_placeholder, use_biases=False):
+    def __init__(self, dilations, sequence_length, x_placeholder, y_placeholder, use_biases=False, use_mean_loss=False):
         self.dilations = dilations
         self.sequence_length = sequence_length
         self.residual_channels = 16  # Not specified in the paper.
@@ -11,6 +11,7 @@ class WaveNet(object):
         self.filter_width = 2  # Convolutions just use 2 samples. This parameter should not be changed.
         self.initial_channels = 1
         self.use_biases = use_biases
+        self.use_mean_loss = use_mean_loss
         self.variables = self._create_variables()
         self.batch_size = 1
         self.predict_func = self._init_predict_tensor(x_placeholder)
@@ -33,8 +34,10 @@ class WaveNet(object):
             slice_size = tf.shape(out)[1] - self.sequence_length
             out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[self.sequence_length - 1], size=[slice_size]),
                              [-1, 1])
-            reduced_loss = tf.reduce_sum(tf.square(tf.sub(out, y)))
-            return reduced_loss
+            squares = tf.square(tf.sub(out, y))
+            if self.use_mean_loss:
+                return tf.reduce_mean(squares)
+            return tf.reduce_sum(squares)
 
     def _create_network(self, inputs):
         skip_connections = []
