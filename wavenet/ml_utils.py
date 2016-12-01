@@ -26,6 +26,11 @@ def create_convolution_variable(name, shape):
     return variable
 
 
+def create_bias_variable(name, shape):
+    initializer = tf.constant_initializer(value=0.0, dtype=tf.float32)
+    return tf.Variable(initializer(shape=shape), name)
+
+
 def _to_dilated_sequences(value, dilation):
     with tf.name_scope('to_dilated_sequences'):
         shape = tf.shape(value)
