@@ -2,9 +2,9 @@ from wavenet.ml_utils import *
 
 
 class WaveNet(object):
-    def __init__(self, dilations, sequence_length, x_placeholder, y_placeholder, use_biases=False, use_mean_loss=False):
+    def __init__(self, dilations, x_placeholder, y_placeholder, use_biases=False,
+                 use_mean_loss=False):
         self.dilations = dilations
-        self.sequence_length = sequence_length
         self.residual_channels = 16  # Not specified in the paper.
         self.dilation_channels = 32  # Not specified in the paper.
         self.skip_channels = 16  # Not specified in the paper.
@@ -31,9 +31,9 @@ class WaveNet(object):
     def _init_loss_tensor(self, y, name='loss'):
         with tf.name_scope(name):
             out = self.pred()
-            slice_size = tf.shape(out)[1] - self.sequence_length
-            out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[self.sequence_length - 1], size=[slice_size]),
-                             [-1, 1])
+            slice_size = tf.shape(y)[0]
+            begin_index = tf.shape(out)[1] - slice_size - 1
+            out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[begin_index], size=[slice_size]), [-1, 1])
             squares = tf.square(tf.sub(out, y))
             if self.use_mean_loss:
                 return tf.reduce_mean(squares)

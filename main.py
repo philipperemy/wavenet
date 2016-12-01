@@ -1,8 +1,9 @@
 import collections
 import json
+from pprint import pprint
 
 import numpy as np
-from pprint import pprint
+
 from constants import *
 from data_reader import next_batch
 from helpers import FileLogger
@@ -22,7 +23,7 @@ def main():
         x_placeholder = tf.placeholder('float32', [FULL_SEQUENCE_LENGTH, 1])
         y_placeholder = tf.placeholder('float32', [FULL_SEQUENCE_LENGTH - SEQUENCE_LENGTH, 1])
 
-    net = WaveNet(wavenet_params['dilations'], SEQUENCE_LENGTH, x_placeholder, y_placeholder, use_biases=True,
+    net = WaveNet(wavenet_params['dilations'], x_placeholder, y_placeholder, use_biases=False,
                   use_mean_loss=True)
     loss = net.loss()
     pred = net.pred()
