@@ -9,8 +9,7 @@ def next_batch():
     Modify this function to ingest your data and returns it.
     :return: (inputs, targets). Could be a python generator.
     """
-    x = np.expand_dims(uniform(size=FULL_SEQUENCE_LENGTH), axis=1)
-    y = np.expand_dims(
-        np.array([np.mean(y) for y in [x[i - SEQUENCE_LENGTH:i] for i in range(SEQUENCE_LENGTH, len(x))]]), axis=1)
-    # y = x[FULL_SEQUENCE_LENGTH - SEQUENCE_LENGTH + 1:]
-    return np.array(x, dtype='float32'), np.array(y, dtype='float32')
+    x = np.array(uniform(size=(1, FULL_SEQUENCE_LENGTH, 1)), dtype='float32')
+    # y = [np.mean(y) for y in [x[:, i - SEQUENCE_LENGTH:i] for i in range(SEQUENCE_LENGTH, x.shape[1])]]
+    y = x[:, FULL_SEQUENCE_LENGTH - SEQUENCE_LENGTH + 1:]
+    return np.array(x, dtype='float32'), np.array(np.reshape(y, (1, -1, 1)), dtype='float32')
