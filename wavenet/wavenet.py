@@ -3,7 +3,7 @@ from wavenet.ml_utils import *
 
 class WaveNet(object):
     def __init__(self, dilations, x_placeholder, y_placeholder, use_biases=False,
-                 use_mean_loss=False):
+                 use_mean_loss=False, inchannels=1):
         self.dilations = dilations
         self.residual_channels = 16  # Not specified in the paper.
         self.dilation_channels = 32  # Not specified in the paper.
@@ -12,6 +12,7 @@ class WaveNet(object):
         self.initial_channels = 1
         self.use_biases = use_biases
         self.use_mean_loss = use_mean_loss
+        self.inchannels = inchannels
         self.variables = self._create_variables()
         self.batch_size = 1
         self.predict_func = self._init_predict_tensor(x_placeholder)
@@ -24,14 +25,13 @@ class WaveNet(object):
         return self.loss_func
 
     def _init_predict_tensor(self, x):
-        x = tf.reshape(tf.cast(x, tf.float32), [self.batch_size, -1, 1])
         out = self._create_network(x)
         return tf.identity(out, name='prediction')
 
     def _init_loss_tensor(self, y, name='loss'):
         with tf.name_scope(name):
             out = self.pred()
-            slice_size = tf.shape(y)[0]
+            slice_size = tf.shape(y)[1]
             begin_index = tf.shape(out)[1] - slice_size - 1
             out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[begin_index], size=[slice_size]), [-1, 1])
             squares = tf.square(tf.sub(out, y))
@@ -99,7 +99,7 @@ class WaveNet(object):
             with tf.variable_scope('causal_layer'):
                 layer = dict()
                 layer['filter'] = create_convolution_variable('filter', [self.filter_width,
-                                                                         1,  # in_channels = 1
+                                                                         self.inchannels,  # in_channels = 1
                                                                          self.residual_channels])
                 var['causal_layer'] = layer
 
