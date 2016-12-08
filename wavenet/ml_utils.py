@@ -26,6 +26,11 @@ def create_convolution_variable(name, shape):
     return variable
 
 
+def create_bias_variable(name, shape):
+    initializer = tf.constant_initializer(value=0.0, dtype=tf.float32)
+    return tf.Variable(initializer(shape=shape), name)
+
+
 def _to_dilated_sequences(value, dilation):
     with tf.name_scope('to_dilated_sequences'):
         shape = tf.shape(value)
@@ -50,7 +55,9 @@ def dilated_convolution(value, filter_, dilation, name='dilated_conv'):
         dilated_sequences = _to_dilated_sequences(padded, dilation)
         conv_sequences = tf.nn.conv1d(dilated_sequences, filter_, stride=1, padding='VALID')  # we use batch here.
         conv = _revert_from_dilated_sequences(conv_sequences, dilation)
-        return conv
+        # We trim on the left in case the buffer is larger than the inputs.
+        conv2 = tf.slice(conv, begin=[0, tf.shape(conv)[1] - tf.shape(value)[1], 0], size=[-1, -1, -1])
+        return conv2
 
 
 def causal_convolution(value, filter_, name='causal_convolution'):

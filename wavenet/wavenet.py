@@ -2,14 +2,17 @@ from wavenet.ml_utils import *
 
 
 class WaveNet(object):
-    def __init__(self, dilations, sequence_length, x_placeholder, y_placeholder):
+    def __init__(self, dilations, x_placeholder, y_placeholder, use_biases=False,
+                 use_mean_loss=False, inchannels=1):
         self.dilations = dilations
-        self.sequence_length = sequence_length
         self.residual_channels = 16  # Not specified in the paper.
         self.dilation_channels = 32  # Not specified in the paper.
         self.skip_channels = 16  # Not specified in the paper.
         self.filter_width = 2  # Convolutions just use 2 samples. This parameter should not be changed.
         self.initial_channels = 1
+        self.use_biases = use_biases
+        self.use_mean_loss = use_mean_loss
+        self.inchannels = inchannels
         self.variables = self._create_variables()
         self.batch_size = 1
         self.predict_func = self._init_predict_tensor(x_placeholder)
@@ -22,16 +25,19 @@ class WaveNet(object):
         return self.loss_func
 
     def _init_predict_tensor(self, x):
-        x = tf.reshape(tf.cast(x, tf.float32), [self.batch_size, -1, 1])
         out = self._create_network(x)
-        out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[tf.shape(out)[1] - 1], size=[1]), [-1, 1])
         return tf.identity(out, name='prediction')
 
     def _init_loss_tensor(self, y, name='loss'):
         with tf.name_scope(name):
             out = self.pred()
-            reduced_loss = tf.reduce_sum(tf.square(tf.sub(out, y)))
-            return reduced_loss
+            slice_size = tf.shape(y)[1]
+            begin_index = tf.shape(out)[1] - slice_size - 1
+            out = tf.reshape(tf.slice(tf.reshape(out, [-1]), begin=[begin_index], size=[slice_size]), [-1, 1])
+            squares = tf.square(tf.sub(out, y))
+            if self.use_mean_loss:
+                return tf.reduce_mean(squares)
+            return tf.reduce_sum(squares)
 
     def _create_network(self, inputs):
         skip_connections = []
@@ -47,8 +53,12 @@ class WaveNet(object):
             w_skip_dense_1 = self.variables['skip']['skip_1']
             w_skip_dense_2 = self.variables['skip']['skip_2']
             skips = tf.nn.conv1d(skips, w_skip_dense_1, stride=1, padding='VALID')
+            if self.use_biases:
+                skips = tf.add(skips, self.variables['skip']['skip_1_bias'])
             skips = tf.nn.relu(skips)
             skips = tf.nn.conv1d(skips, w_skip_dense_2, stride=1, padding='VALID')
+            if self.use_biases:
+                skips = tf.add(skips, self.variables['skip']['skip_2_bias'])
         return skips
 
     def _create_causal_layer(self, inputs):
@@ -61,15 +71,25 @@ class WaveNet(object):
             variables = self.variables['dilated_stack'][layer_index]
             w_f = variables['filter']
             w_g = variables['gate']
-            conv_f = tf.tanh(dilated_convolution(inputs, w_f, dilation))
-            conv_g = tf.sigmoid(dilated_convolution(inputs, w_g, dilation))
-            z = tf.mul(conv_f, conv_g)
+
+            conv_filter = dilated_convolution(inputs, w_f, dilation)
+            conv_gate = dilated_convolution(inputs, w_g, dilation)
+
+            if self.use_biases:
+                conv_filter = tf.add(conv_filter, variables['filter_bias'])
+                conv_gate = tf.add(conv_gate, variables['gate_bias'])
+
+            z = tf.mul(tf.tanh(conv_filter), tf.sigmoid(conv_gate))
 
             w_o = variables['dense']
             conv_o = tf.nn.conv1d(z, w_o, stride=1, padding='VALID')
 
             w_s = variables['skip']
             conv_s = tf.nn.conv1d(z, w_s, stride=1, padding='VALID')
+
+            if self.use_biases:
+                conv_o = tf.add(conv_o, variables['dense_bias'])
+                conv_s = tf.add(conv_s, variables['skip_bias'])
 
             return conv_s, inputs + conv_o
 
@@ -79,7 +99,7 @@ class WaveNet(object):
             with tf.variable_scope('causal_layer'):
                 layer = dict()
                 layer['filter'] = create_convolution_variable('filter', [self.filter_width,
-                                                                         1,  # in_channels = 1
+                                                                         self.inchannels,  # in_channels = 1
                                                                          self.residual_channels])
                 var['causal_layer'] = layer
 
@@ -102,6 +122,12 @@ class WaveNet(object):
                         current['skip'] = create_convolution_variable('skip', [1,
                                                                                self.dilation_channels,
                                                                                self.skip_channels])
+                        if self.use_biases:
+                            current['filter_bias'] = create_bias_variable('filter_bias', [self.dilation_channels])
+                            current['gate_bias'] = create_bias_variable('gate_bias', [self.dilation_channels])
+                            current['dense_bias'] = create_bias_variable('dense_bias', [self.residual_channels])
+                            current['skip_bias'] = create_bias_variable('skip_bias', [self.skip_channels])
+
                         var['dilated_stack'].append(current)
 
             with tf.variable_scope('skip'):
@@ -110,5 +136,10 @@ class WaveNet(object):
                 skip['skip_1'] = create_convolution_variable('skip_1', [1, self.skip_channels, self.skip_channels])
                 # 1 x 1
                 skip['skip_2'] = create_convolution_variable('skip_2', [1, self.skip_channels, 1])  # in_channels = 1
+
+                if self.use_biases:
+                    skip['skip_1_bias'] = create_bias_variable('skip_1_bias', [self.skip_channels])
+                    skip['skip_2_bias'] = create_bias_variable('skip_2_bias', [1])
+
                 var['skip'] = skip
         return var

@@ -7,17 +7,18 @@ np.set_printoptions(threshold=np.nan)
 
 
 class WaveNetTests(tf.test.TestCase):
-    def test_wavenet(self):
+    def test_long_sequence(self):
         with self.test_session() as sess:
-            sequence_length = 8
-            batch_x = tf.identity(np.array([[[0], [1], [2], [3], [4], [5], [6], [7]]], dtype='float32'))
-            batch_y = tf.identity(np.array([[1]], dtype='float32'))
-            net = WaveNet([1, 2, 4], sequence_length, batch_x, batch_y)
+            full_sequence_length = 1024
+            sequence_length = 32
+            batch_x = tf.identity(np.expand_dims(np.array(range(0, full_sequence_length), dtype='float32'), axis=1))
+            batch_y = tf.identity(
+                np.expand_dims(np.array(range(0, full_sequence_length - sequence_length), dtype='float32'), axis=1))
+            net = WaveNet([1, 2, 4, 8, 16], sequence_length, batch_x, batch_y)
             init = tf.initialize_all_variables()
             sess.run(init)
-            # net._create_causal_layer(batch_x)
-            batch_x_out = net._create_causal_layer(batch_x)
-            net._create_dilated_layer(batch_x_out, layer_index=0, dilation=4)
+            net._init_predict_tensor(batch_x)
+            net._init_loss_tensor(batch_y)
 
     def test_loss_2(self):
         with self.test_session() as sess:
