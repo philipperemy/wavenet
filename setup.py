@@ -6,6 +6,6 @@ setup(
     description='Lightweight WaveNet Framework',
     author='Philippe Remy',
     license='MIT',
-    packages=find_packages(exclude=['contrib', 'docs', 'tests']),
+    packages=['wavenet'],
     install_requires=['tensorflow>=0.10']
 )
